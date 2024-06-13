@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Maze Generator</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link href="style.css" type="text/css" rel="stylesheet">
+        <script src=https://cdnjs.cloudflare.com/ajax/libs/buckets/1.98.2/buckets.min.js></script>
+	</head>
+	<body>
+		<div class="header">
+			<h1>Maze Generator</h1>
+		</div>
+		<form>
+			<p>
+		        <label for="nrows">Number of rows:</label>
+		        <input id="nrows" type="number" step="1" pattern="\d+" value="30">
+            </p>
+            <p>
+		        <label for="ncols">Number of cols:</label>
+		        <input id="ncols" type="number" step="1" pattern="\d+" value="30">
+			</p>
+            		</form>
+        <div id="maze">
+            <div>
+                <button onclick="generateMaze()">Generate Maze</button>
+            </div>
+            <canvas id="grid"></canvas>
+        </div>
+        <div id="instructions">
+            <p>
+                <b>Solving: </b>Click and hold on some starting location, then unlick on end location. A red line will appear showing the path between locations.
+            </p>
+        </div>
+		<script src="main.js"></script>
+	</body>
+</html>
