@@ -12,10 +12,10 @@ function generateMaze() {
     var path_canvas = document.getElementById('solution');
     var path_ctx = path_canvas.getContext('2d');
 
-    grid_ctx.canvas.width = window.innerWidth*0.8;
-    grid_ctx.canvas.height = window.innerHeight*0.8;
-    path_ctx.canvas.width = window.innerWidth*0.8;
-    path_ctx.canvas.height = window.innerHeight*0.8;
+    grid_ctx.canvas.width = window.innerWidth * .8;
+    grid_ctx.canvas.height = window.innerHeight * .8;
+    path_ctx.canvas.width = window.innerWidth * .8;
+    path_ctx.canvas.height = window.innerHeight * .8;
 
     let nrows = Number(document.getElementById('nrows').value);
     let ncols = Number(document.getElementById('ncols').value);
@@ -303,8 +303,8 @@ class RectangularMaze {
         grid[yStart][xStart].prev = null;
 
         function cost(cell) {
-            // let heuristic = Math.sqrt((cell.x-xEnd)**2 + (cell.y-yEnd)**2);
-            let heuristic = 0;
+            let heuristic = Math.sqrt((cell.x-xEnd)**2 + (cell.y-yEnd)**2);
+            //let heuristic = 0;
             return cell.dist + heuristic;
         };
 
