@@ -8,7 +8,8 @@
         <script src=https://cdnjs.cloudflare.com/ajax/libs/buckets/1.98.2/buckets.min.js></script>
 	</head>
 	<body>
-		<div class="header">
+        <div class="container" style="max-width: 50em">
+		<div id="header">
 			<h1>Maze Generator</h1>
 		</div>
 		<form>
@@ -23,14 +24,16 @@
             		</form>
         <div id="maze">
             <div>
-                <button onclick="generateMaze()">Generate Maze</button>
+                <button id="button" onclick="generateMaze()">Generate Maze</button>
+            </div>
+            <div id="instructions">
+                <p>
+                    <b>Solving: </b>Click and hold on some starting location, then unlick on end location. A red line will appear showing the path between locations.
+                </p>
             </div>
             <canvas id="grid"></canvas>
+            <canvas id="solution"></canvas>
         </div>
-        <div id="instructions">
-            <p>
-                <b>Solving: </b>Click and hold on some starting location, then unlick on end location. A red line will appear showing the path between locations.
-            </p>
         </div>
 		<script src="main.js"></script>
 	</body>

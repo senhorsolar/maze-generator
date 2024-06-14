@@ -1,138 +1,82 @@
 // Maze generation code
 
-var canvas = document.getElementById('grid');
-var ctx = canvas.getContext('2d');
-var grid = null; // todo move to RectangularMaze class
+const controller = new AbortController();
 
-function scaleXY(x, y) {
-    let rowSize = canvas.height / grid.nrows;
-    let colSize = canvas.width / grid.ncols;
-    return [x / colSize, y / rowSize];
-}
+function generateMaze() {
 
-function getXY(e) {
+    // Remove nested event listeners
+    //controller.abort();
+
+    var grid_canvas = document.getElementById('grid');
+    var grid_ctx = grid_canvas.getContext('2d');
+    var path_canvas = document.getElementById('solution');
+    var path_ctx = path_canvas.getContext('2d');
+
+    grid_ctx.canvas.width = window.innerWidth*0.8;
+    grid_ctx.canvas.height = window.innerHeight*0.8;
+    path_ctx.canvas.width = window.innerWidth*0.8;
+    path_ctx.canvas.height = window.innerHeight*0.8;
+
+    let nrows = Number(document.getElementById('nrows').value);
+    let ncols = Number(document.getElementById('ncols').value);
+    console.log(`nrows: ${nrows}`);
+    console.log(`ncols: ${ncols}`);
+
+    let rowScale = grid_ctx.canvas.height / nrows;
+    let colScale = grid_ctx.canvas.width / ncols;
+    let grid = RectangularMaze.generate(nrows, ncols);
+    RectangularMaze.drawGrid(grid_ctx, grid, rowScale, colScale);
+
+    function clickStartHandler(e1) {
+
+        let [xStart, yStart] = getXY(grid_canvas, grid, e1);
+        console.log(`x-start: ${xStart}, y-start: ${yStart}`);
+
+        if (!validateXY(grid, xStart, yStart))
+            return;
+
+        function clickEndHandler(e2) {
+
+            let [xEnd, yEnd] = getXY(grid_canvas, grid, e2);
+            console.log(`x-end: ${xEnd}, y-end: ${yEnd}`);
+
+            if (!validateXY(grid, xEnd, yEnd))
+                return;
+
+            let path = RectangularMaze.solve(grid, xStart, yStart, xEnd, yEnd);
+            if (path !== null) {
+                console.log("Found path");
+                RectangularMaze.drawPath(path_ctx, grid, path);
+            }
+            else {
+                console.log("Path not found");
+            }
+        };
+
+        document.addEventListener("pointerup", clickEndHandler, {"once": true});
+    };
+
+    document.addEventListener("pointerdown", clickStartHandler, {"signal": controller.signal});
+};
+
+function getXY(canvas, grid, e) {
     const rect = canvas.getBoundingClientRect();
     let x = e.clientX - rect.left;
     let y = e.clientY - rect.top;
-    return scaleXY(x, y).map(Math.floor);
+    let rowSize = canvas.height / grid.nrows;
+    let colSize = canvas.width / grid.ncols;
+    return [Math.floor(x / colSize), Math.floor(y / rowSize)];
 };
 
-function validateXY(x, y) {
+function validateXY(grid, x, y) {
     if (x < 0 || x >= grid.ncols || y < 0 || y >= grid.nrows) {
         return false;
     }
     return true;
 };
 
-document.addEventListener("mousedown", function(e1) {
-    if (grid == null)
-        return;
-
-    let [xStart, yStart] = getXY(e1);
-    console.log(`x-start: ${xStart}, y-start: ${yStart}`);
-    if (validateXY(xStart, yStart)) {
-        document.addEventListener("mouseup", function(e2) {
-            let [xEnd, yEnd] = getXY(e2);
-            console.log(`x-end: ${xEnd}, y-end: ${yEnd}`);
-            if (validateXY(xEnd, yEnd)) {
-                let path = solve(xStart, yStart, xEnd, yEnd);
-                if (path !== null) {
-                    console.log("Found path");
-                    drawPath(ctx, path);
-                }
-                else {
-                    console.log("Path not found");
-                }
-            }
-        }, {"once": true});
-    }
-});
-
-
-function solve(xStart, yStart, xEnd, yEnd) {
-
-    for (let row of grid) {
-        for (let cell of row) {
-            cell.visited = false;
-            cell.dist = Infinity;
-        }
-    }
-    grid[yStart][xStart].dist = 0;
-    grid[yStart][xStart].visited = true;
-    grid[yStart][xStart].prev = null;
-
-    function cost(cell) {
-        // let heuristic = Math.sqrt((cell.x-xEnd)**2 + (cell.y-yEnd)**2);
-        let heuristic = 0;
-        return cell.dist + heuristic;
-    };
-
-    let pq = new buckets.PriorityQueue((cellA, cellB) => {
-        costA = cost(cellA);
-        costB = cost(cellB);
-        if (costA > costB) { // cellA has lower priority
-            return -1;
-        }
-        else if (costA < costB) { // cellA has higher priority
-            return 1;
-        }
-        else {
-            return 0;
-        }
-    });
-    pq.add(grid[yStart][xStart]);
-
-    while (!pq.isEmpty()) {
-        let cell = pq.dequeue();
-        if (cell.x === xEnd && cell.y === yEnd) {
-            return getPath(cell);
-        }
-        for (let neighbor of RectangularMaze.getNeighbors(grid, cell)) {
-            if (!hasWall(cell, neighbor)) {
-                neighbor.dist = cell.dist + 1;
-                neighbor.visited = true;
-                neighbor.prev = cell;
-                pq.add(neighbor);
-            }
-        }
-    }
-
-    return null;
-};
-
-function getPath(destCell) {
-    let path = [];
-    for (let cell = destCell; cell !== null; cell = cell.prev) {
-        path.push(cell);
-    }
-    return path.reverse();
-};
-
-function drawPath(ctx, path) {
-    path.slice(0, -1).forEach((fromCell, i) => {
-        let toCell = path[i+1];
-        let rowScale = ctx.canvas.height / grid.nrows;
-        let colScale = ctx.canvas.width / grid.ncols;
-        let [x1, x2] = [fromCell.x+0.5, toCell.x+0.5].map((x) => x * colScale);
-        let [y1, y2] = [fromCell.y+0.5, toCell.y+0.5].map((y) => y * rowScale);
-        drawLine(ctx, x1, y1, x2, y2, 'red');
-    });
-};
-
-function generateMaze() {
-    let nrows = Number(document.getElementById('nrows').value);
-    let ncols = Number(document.getElementById('ncols').value);
-    console.log(`nrows: ${nrows}`);
-    console.log(`ncols: ${ncols}`);
-    ctx.canvas.width = window.innerWidth*0.5;
-    ctx.canvas.height = window.innerHeight*0.5;
-    let rowScale = ctx.canvas.height / nrows;
-    let colScale = ctx.canvas.width / ncols;
-    grid = RectangularMaze.generate(nrows, ncols);
-    drawGrid(ctx, grid, rowScale, colScale);
-};
-
 function drawLine(ctx, x1, y1, x2, y2, color='black') {
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x1,y1);
     ctx.lineTo(x2,y2);
@@ -140,13 +84,13 @@ function drawLine(ctx, x1, y1, x2, y2, color='black') {
     ctx.stroke();
 };
 
-function drawGrid (ctx, grid, rowScale, colScale) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let y=0; y < grid.nrows; y += 1) {
-        for (let x=0; x < grid.ncols; x += 1) {
-            grid[y][x].drawWalls(ctx, rowScale, colScale);
-        }
-    }
+function drawDot(ctx, x, y, radius, color='black') {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, 2*Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+    // ctx.strokeStyle = color;
+    ctx.stroke();
 };
 
 class Cell {
@@ -164,27 +108,35 @@ class Cell {
         return !(this.visited);
     };
 
-    drawWalls(ctx, rowScale=1.0, colScale=1.0) {
+    getWalls() {
+        let walls = [];
         if (this.topWall) {
-            drawLine(ctx, this.x*colScale, this.y*rowScale, (this.x+1)*colScale, this.y*rowScale);
+            walls.push([this.x, this.y, this.x+1, this.y]);
         }
         if (this.bottomWall) {
-            drawLine(ctx, this.x*colScale, (this.y+1)*rowScale, (this.x+1)*colScale, (this.y+1)*rowScale);
+            walls.push([this.x, this.y+1, this.x+1, this.y+1]);
         }
         if (this.leftWall) {
-            drawLine(ctx, this.x*colScale, this.y*rowScale, this.x*colScale, (this.y+1)*rowScale);
+            walls.push([this.x, this.y, this.x, this.y+1]);
         }
         if (this.rightWall) {
-            drawLine(ctx, (this.x+1)*colScale, this.y*rowScale, (this.x+1)*colScale, (this.y+1)*rowScale);
+            walls.push([this.x+1, this.y, this.x+1, this.y+1]);
+        }
+        return walls;
+    };
+
+    drawWalls(ctx, rowScale=1.0, colScale=1.0) {
+        for (let [x1, y1, x2, y2] of this.getWalls()) {
+            drawLine(ctx, x1*colScale, y1*rowScale, x2*colScale, y2*rowScale);
         }
     };
 };
 
 const Direction = {
-    Up: 'Up',
-    Down: 'Down',
-    Left: 'Left',
-    Right: 'Right'
+        Up: 'Up',
+        Down: 'Down',
+        Left: 'Left',
+        Right: 'Right'
 };
 
 function getDirection(fromCell, toCell) {
@@ -207,8 +159,10 @@ function getDirection(fromCell, toCell) {
     }
 };
 
-function removeWall(fromCell, toCell) {
-    switch (getDirection(fromCell, toCell)) {
+class RectangularMaze {
+
+    static removeWall(fromCell, toCell) {
+        switch (getDirection(fromCell, toCell)) {
         case Direction.Up:
             fromCell.topWall = false;
             toCell.bottomWall = false;
@@ -227,11 +181,11 @@ function removeWall(fromCell, toCell) {
             break;
         default:
             throw new Error('Unknown direction');
-    }
-};
+        }
+    };
 
-function hasWall(fromCell, toCell) {
-    switch (getDirection(fromCell, toCell)) {
+    static hasWall(fromCell, toCell) {
+        switch (getDirection(fromCell, toCell)) {
         case Direction.Up:
             return (fromCell.topWall || toCell.bottomWall);
             break;
@@ -246,15 +200,9 @@ function hasWall(fromCell, toCell) {
             break;
         default:
             throw new Error('Unknown direction');
-    }
-};
+        }
+    };
 
-function range(size) {
-    return [...Array(size).keys()];
-};
-
-class RectangularMaze {
- 
     static generate(nrows, ncols) {
         // Use randomized depth-first search algo
         let grid = RectangularMaze.initGrid(nrows, ncols);
@@ -274,7 +222,7 @@ class RectangularMaze {
             let neighbor = RectangularMaze.getRandNeighbor(grid, current_cell);
             if (neighbor) {
                 stack.push(current_cell);
-                removeWall(current_cell, neighbor);
+                RectangularMaze.removeWall(current_cell, neighbor);
                 neighbor.visited = true;
                 stack.push(neighbor);
             }
@@ -284,6 +232,7 @@ class RectangularMaze {
     };
     
     static initGrid(nrows, ncols) {
+        const range = (size) => [...Array(size).keys()];
         let grid = Array.from(range(nrows), (y) => Array.from(range(ncols), (x) => new Cell(x,y)));
         grid.nrows = nrows;
         grid.ncols = ncols;
@@ -318,7 +267,114 @@ class RectangularMaze {
             return null;
         }
     };
+
+    static drawGrid (ctx, grid, rowScale, colScale) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        let walls = new Set();
+        for (let y=0; y < grid.nrows; y += 1) {
+            for (let x=0; x < grid.ncols; x += 1) {
+                for (let wall of grid[y][x].getWalls()) {
+                    walls.add(JSON.stringify(wall));
+                }
+                //grid[y][x].drawWalls(ctx, rowScale, colScale);
+            }
+        }
+        walls.forEach((wall) => {
+            let [x1, y1, x2, y2] = JSON.parse(wall);
+            drawLine(ctx, x1*colScale, y1*rowScale, x2*colScale, y2*rowScale);
+        });
+    };
+
+    static solve(grid, xStart, yStart, xEnd, yEnd) {
+
+        if (!validateXY(grid, xStart, yStart) || !validateXY(grid, xEnd, yEnd)) {
+            return null;
+        }
+
+        for (let row of grid) {
+            for (let cell of row) {
+                cell.visited = false;
+                cell.dist = Infinity;
+            }
+        }
+
+        grid[yStart][xStart].dist = 0;
+        grid[yStart][xStart].visited = true;
+        grid[yStart][xStart].prev = null;
+
+        function cost(cell) {
+            // let heuristic = Math.sqrt((cell.x-xEnd)**2 + (cell.y-yEnd)**2);
+            let heuristic = 0;
+            return cell.dist + heuristic;
+        };
+
+        let pq = new buckets.PriorityQueue((cellA, cellB) => {
+            let costA = cost(cellA);
+            let costB = cost(cellB);
+            if (costA > costB) { // cellA has lower priority
+                return -1;
+            }
+            else if (costA < costB) { // cellA has higher priority
+                return 1;
+            }
+            else {
+                return 0;
+            }
+        });
+        pq.add(grid[yStart][xStart]);
+
+        while (!pq.isEmpty()) {
+            let cell = pq.dequeue();
+            if (cell.x === xEnd && cell.y === yEnd) {
+                let path = [];
+                for (let _cell = cell; _cell !== null; _cell = _cell.prev) {
+                    path.push(_cell);
+                }
+                return path.reverse();
+            }
+            for (let neighbor of RectangularMaze.getNeighbors(grid, cell)) {
+                if (!RectangularMaze.hasWall(cell, neighbor)) {
+                    neighbor.dist = cell.dist + 1;
+                    neighbor.visited = true;
+                    neighbor.prev = cell;
+                    pq.add(neighbor);
+                }
+            }
+        }
+
+        return null;
+    };
+
+    static drawPath(ctx, grid, path) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        path.slice(0, -1).forEach((fromCell, i) => {
+            let toCell = path[i+1];
+            let rowScale = ctx.canvas.height / grid.nrows;
+            let colScale = ctx.canvas.width / grid.ncols;
+            let [x1, x2] = [fromCell.x+0.5, toCell.x+0.5].map((x) => x * colScale);
+            let [y1, y2] = [fromCell.y+0.5, toCell.y+0.5].map((y) => y * rowScale);
+            drawLine(ctx, x1, y1, x2, y2, 'red');
+            if (i === 0) {
+                drawDot(ctx, x1, y1, Math.min(rowScale/4, colScale/4), 'red');
+            }
+            if (i+2 === path.length) {
+                drawDot(ctx, x2, y2, Math.min(rowScale/4, colScale/4), 'red');
+            }
+        });
+    };
 };
 
+function main() {
+    generateMaze();
 
-generateMaze();
+    function enterKey(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            document.getElementById("button").click();
+        }
+    };
+    document.getElementById("nrows").addEventListener("keypress", enterKey);
+    document.getElementById("ncols").addEventListener("keypress", enterKey);
+};
+
+main();
