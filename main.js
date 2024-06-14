@@ -1,11 +1,12 @@
 // Maze generation code
 
-const controller = new AbortController();
-
 function generateMaze() {
 
-    // Remove nested event listeners
-    //controller.abort();
+    // Remove old event listeners
+    if (this.hasOwnProperty("controller")) {
+        this.controller.abort();
+    }
+    this.controller = new AbortController();
 
     var grid_canvas = document.getElementById('grid');
     var grid_ctx = grid_canvas.getContext('2d');
@@ -28,6 +29,8 @@ function generateMaze() {
     RectangularMaze.drawGrid(grid_ctx, grid, rowScale, colScale);
 
     function clickStartHandler(e1) {
+
+        //document.removeEventListener("pointerup", clickEndHandler);
 
         let [xStart, yStart] = getXY(grid_canvas, grid, e1);
         console.log(`x-start: ${xStart}, y-start: ${yStart}`);
@@ -53,10 +56,10 @@ function generateMaze() {
             }
         };
 
-        document.addEventListener("pointerup", clickEndHandler, {"once": true});
+        document.addEventListener("pointerup", clickEndHandler, {once: true});
     };
 
-    document.addEventListener("pointerdown", clickStartHandler, {"signal": controller.signal});
+    document.addEventListener("pointerdown", clickStartHandler, {signal: this.controller.signal});
 };
 
 function getXY(canvas, grid, e) {
